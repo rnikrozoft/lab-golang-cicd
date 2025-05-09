@@ -1,10 +1,12 @@
-FROM golang:1.24 AS builder
+FROM golang:1.24-alpine as stage
 WORKDIR /app
 COPY . .
-RUN go build -o main
+RUN go build -o /main main.go
 
 FROM alpine
-WORKDIR /app
-COPY --from=builder /app/main .
+WORKDIR /
+COPY --from=stage /main /main
+
 EXPOSE 80
-CMD ["./main"]
+
+ENTRYPOINT [ "/main" ]
