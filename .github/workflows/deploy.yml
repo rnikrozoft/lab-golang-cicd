@@ -43,5 +43,5 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            pkill myapp || true
-            nohup ./myapp > output.log 2>&1 &
+            sudo pkill myapp || true
+            sudo nohup ./myapp > output.log 2>&1 &
