@@ -1,0 +1,20 @@
+services:
+  server1:
+    image: 164.115.45.144:5000/cot/marineapp-cot-backend-golang:latest
+    ports:
+      - 3333:3333
+    restart: unless-stopped
+    environment:
+      - SERVER_TIMEOUT=60000
+      - DB_HOST=164.115.45.141
+      - DB_USER=app_nsw_local
+      - DB_PASSWORD=dy2DzV88IGm3ofQjH8CUFbAlFgmlkaCQ
+      - DB_SCHEMA=certificates
+      - DB_PORT=3306
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 2g
+    memswap_limit: 3G

@@ -1,48 +1,25 @@
-name: Build and Deploy to VPS
-
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-
+  build_deploy:
+    runs-on: md-gdcc-144
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Set up Docker
-      uses: docker/setup-buildx-action@v3
+      - name: Set Up Execution Permissions for Build Script
+        run: chmod +x scripts/build.sh
 
-    - name: Build Docker image
-      run: |
-        docker build -t ${{ secrets.REGISTRY }}/myapp:latest .
+      - name: Build the Project
+        run: ./scripts/build.sh
+        timeout-minutes: 10  # Timeout set to 10 minutes for the build step
 
-    - name: Copy image to VPS (save image to tarball)
-      run: |
-        docker save ${{ secrets.REGISTRY }}/myapp:latest -o myapp.tar
+      - name: Set Up Execution Permissions for Deploy Script
+        run: chmod +x deployment/main/deploy.local.sh
 
-    - name: Send image to VPS
-      uses: appleboy/scp-action@v0.1.4
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.VPS_SSH_KEY }}
-        source: "myapp.tar"
-        target: "~/"
-
-    - name: Load image on VPS and restart container
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.VPS_SSH_KEY }}
-        script: |
-          docker load -i ~/myapp.tar
-          docker tag myapp:latest ${{ secrets.REGISTRY }}/myapp:latest
-          docker push ${{ secrets.REGISTRY }}/myapp:latest
-
-          docker rm -f myapp || true
-          docker run -d --name myapp -p 80:80 ${{ secrets.REGISTRY }}/myapp:latest
+      - name: Deploy the Project
+        run: ./deployment/main/deploy.local.sh
+        timeout-minutes: 15  # Timeout set to 15 minutes for the deploy step

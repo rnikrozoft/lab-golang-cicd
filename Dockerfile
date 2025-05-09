@@ -7,6 +7,6 @@ FROM alpine
 WORKDIR /
 COPY --from=stage /main /main
 
-EXPOSE 80
+EXPOSE 3333
 
 ENTRYPOINT [ "/main" ]
