@@ -1,48 +1,48 @@
-name: Deploy to Vultr VPS
+name: Build and Deploy to VPS
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
-  build-deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.24
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v3
 
-      - name: Build binary
-        run: GOOS=linux GOARCH=amd64 go build -o myapp
-      
-      - name: Debug secret presence
-        run: |
-          echo "Secret length: ${#VPS_SSH_KEY}"
-        env:
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ secrets.REGISTRY }}/myapp:latest .
 
-      - name: Upload to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          source: "myapp"
-          target: "/home/${{ secrets.VPS_USER }}/myapp"
+    - name: Copy image to VPS (save image to tarball)
+      run: |
+        docker save ${{ secrets.REGISTRY }}/myapp:latest -o myapp.tar
 
-      - name: Restart app on VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            pkill myapp || true
-            cd /home/${{ secrets.VPS_USER }}/myapp
-            nohup ./myapp > output.log 2>&1 & disown
+    - name: Send image to VPS
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        source: "myapp.tar"
+        target: "~/"
+
+    - name: Load image on VPS and restart container
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          docker load -i ~/myapp.tar
+          docker tag myapp:latest ${{ secrets.REGISTRY }}/myapp:latest
+          docker push ${{ secrets.REGISTRY }}/myapp:latest
+
+          docker rm -f myapp || true
+          docker run -d --name myapp -p 80:80 ${{ secrets.REGISTRY }}/myapp:latest
