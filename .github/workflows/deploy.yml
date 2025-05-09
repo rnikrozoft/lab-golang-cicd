@@ -19,6 +19,12 @@ jobs:
 
       - name: Build binary
         run: GOOS=linux GOARCH=amd64 go build -o myapp
+      
+      - name: Debug secret presence
+        run: |
+          echo "Secret length: ${#VPS_SSH_KEY}"
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
 
       - name: Upload to VPS
         uses: appleboy/scp-action@v0.1.7
